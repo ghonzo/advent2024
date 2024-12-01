@@ -3,14 +3,15 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ghonzo/advent2024/common"
 )
 
-// Day 1: Trebuchet?!
-// Part 1 answer: 55386
-// Part 2 answer: 54824
+// Day 1: Historian Hysteria
+// Part 1 answer: 2192892
+// Part 2 answer: 22962826
 func main() {
 	fmt.Println("Advent of Code 2024, Day 1")
 	entries := common.ReadStringsFromFile("input.txt")
@@ -20,48 +21,33 @@ func main() {
 
 func part1(entries []string) int {
 	var total int
-	for _, line := range entries {
-		var first, last int
-		for _, c := range []byte(line) {
-			if c > '0' && c <= '9' {
-				last = int(c - '0')
-				if first == 0 {
-					first = last
-				}
-			}
-		}
-		total += first*10 + last
+	left := make([]int, len(entries))
+	right := make([]int, len(entries))
+	for i, line := range entries {
+		fields := strings.Fields(line)
+		left[i] = common.Atoi(fields[0])
+		right[i] = common.Atoi(fields[1])
+	}
+	sort.Ints(left)
+	sort.Ints(right)
+	for i, l := range left {
+		total += common.Abs(l - right[i])
 	}
 	return total
 }
 
-var digits = []string{"one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}
-
 func part2(entries []string) int {
 	var total int
-	for _, line := range entries {
-		var first, last int
-		for i := 0; i < len(line); i++ {
-			var d int
-			c := line[i]
-			if c > '0' && c <= '9' {
-				d = int(c - '0')
-			} else {
-				for di, ds := range digits {
-					if strings.HasPrefix(line[i:], ds) {
-						d = di + 1
-						break
-					}
-				}
-			}
-			if d > 0 {
-				last = d
-				if first == 0 {
-					first = d
-				}
-			}
-		}
-		total += first*10 + last
+	left := make([]int, len(entries))
+	rightMap := make(map[int]int)
+	for i, line := range entries {
+		fields := strings.Fields(line)
+		left[i] = common.Atoi(fields[0])
+		rVal := common.Atoi(fields[1])
+		rightMap[rVal] = rightMap[rVal] + 1
+	}
+	for _, l := range left {
+		total += l * rightMap[l]
 	}
 	return total
 }
