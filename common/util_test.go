@@ -97,3 +97,30 @@ func TestReverse(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertToInts(t *testing.T) {
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []int
+	}{
+		{"empty", args{""}, []int{}},
+		{"empty2", args{"empty"}, []int{}},
+		{"one", args{"123"}, []int{123}},
+		{"one negative", args{"-345"}, []int{345}},
+		{"one with junk", args{"  -325*"}, []int{325}},
+		{"comma separated", args{"2,4,6,8"}, []int{2, 4, 6, 8}},
+		{"comma and space separated", args{"2, 4, 6, 18"}, []int{2, 4, 6, 18}},
+		{"space separated", args{"112233     445566"}, []int{112233, 445566}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ConvertToInts(tt.args.s); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ConvertToInts() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

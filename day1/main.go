@@ -4,7 +4,6 @@ package main
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/ghonzo/advent2024/common"
 )
@@ -24,9 +23,9 @@ func part1(entries []string) int {
 	left := make([]int, len(entries))
 	right := make([]int, len(entries))
 	for i, line := range entries {
-		fields := strings.Fields(line)
-		left[i] = common.Atoi(fields[0])
-		right[i] = common.Atoi(fields[1])
+		values := common.ConvertToInts(line)
+		left[i] = values[0]
+		right[i] = values[1]
 	}
 	sort.Ints(left)
 	sort.Ints(right)
@@ -41,10 +40,9 @@ func part2(entries []string) int {
 	left := make([]int, len(entries))
 	rightMap := make(map[int]int)
 	for i, line := range entries {
-		fields := strings.Fields(line)
-		left[i] = common.Atoi(fields[0])
-		rVal := common.Atoi(fields[1])
-		rightMap[rVal] = rightMap[rVal] + 1
+		values := common.ConvertToInts(line)
+		left[i] = values[0]
+		rightMap[values[1]]++
 	}
 	for _, l := range left {
 		total += l * rightMap[l]

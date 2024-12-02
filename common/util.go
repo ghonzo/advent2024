@@ -1,6 +1,7 @@
 package common
 
 import (
+	"regexp"
 	"slices"
 	"strconv"
 
@@ -58,4 +59,18 @@ func LCM(a, b int, integers ...int) int {
 	}
 
 	return result
+}
+
+var sep = regexp.MustCompile(`\D+`)
+
+// Converts a string of ints separated by anything non-numeric into an int slice.
+// Only works with positive numbers
+func ConvertToInts(s string) []int {
+	ints := []int{}
+	for _, part := range sep.Split(s, -1) {
+		if len(part) > 0 {
+			ints = append(ints, Atoi(part))
+		}
+	}
+	return ints
 }

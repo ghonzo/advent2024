@@ -4,7 +4,6 @@ package main
 import (
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/ghonzo/advent2024/common"
 )
@@ -22,11 +21,7 @@ func main() {
 func part1(entries []string) int {
 	var safe int
 	for _, line := range entries {
-		fields := strings.Fields(line)
-		levels := make([]int, len(fields))
-		for i, f := range fields {
-			levels[i] = common.Atoi(f)
-		}
+		levels := common.ConvertToInts(line)
 		if isSafe(levels) {
 			safe++
 		}
@@ -49,11 +44,7 @@ func isSafe(levels []int) bool {
 func part2(entries []string) int {
 	var safe int
 	for _, line := range entries {
-		fields := strings.Fields(line)
-		levels := make([]int, len(fields))
-		for i, f := range fields {
-			levels[i] = common.Atoi(f)
-		}
+		levels := common.ConvertToInts(line)
 		if isSafe(levels) {
 			safe++
 		} else {
