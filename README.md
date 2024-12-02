@@ -1,5 +1,5 @@
 # advent2024
-Advent of Code 2024 in Go
+[Advent of Code 2024](https://adventofcode.com/2024) in Go
 
 Each day is its own subdirectory, in the file `main.go`. Usually, the input for the day will be in a file called `input.txt`. Additionally,
 the example data is usually in a file called `testdata/example.txt` and is referenced from the unit tests.
