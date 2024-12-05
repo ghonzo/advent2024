@@ -20,28 +20,11 @@ func main() {
 
 func part1(entries []string) int {
 	var total int
-	// Order map ... values must be not be after key
-	orderMap := make(map[int]mapset.Set[int])
-	var i int
-	var line string
-	for i, line = range entries {
-		if len(line) == 0 {
-			break
-		}
-		rule := common.ConvertToInts(line)
-		s, ok := orderMap[rule[1]]
-		if !ok {
-			s = mapset.NewSet[int]()
-			orderMap[rule[1]] = s
-		}
-		s.Add(rule[0])
-	}
-	// Now read each update
+	orderingRules, updates := readEntries(entries)
 outer:
-	for _, line = range entries[i+1:] {
-		update := common.ConvertToInts(line)
-		for n, pageNum := range update[:len(update)-1] {
-			if vals, ok := orderMap[pageNum]; ok && vals.ContainsAny(update[n+1:]...) {
+	for _, update := range updates {
+		for i, pageNum := range update[:len(update)-1] {
+			if preconditions, ok := orderingRules[pageNum]; ok && preconditions.ContainsAny(update[i+1:]...) {
 				continue outer
 			}
 		}
@@ -50,23 +33,10 @@ outer:
 	return total
 }
 
-func insertInt(array []int, value int, index int) []int {
-	return append(array[:index], append([]int{value}, array[index:]...)...)
-}
-
-func removeInt(array []int, index int) []int {
-	return append(array[:index], array[index+1:]...)
-}
-
-func moveInt(array []int, srcIndex int, dstIndex int) []int {
-	value := array[srcIndex]
-	return insertInt(removeInt(array, srcIndex), value, dstIndex)
-}
-
-func part2(entries []string) int {
-	var total int
-	// Order map ... values must be not be after key
-	orderMap := make(map[int]mapset.Set[int])
+func readEntries(entries []string) (map[int]mapset.Set[int], [][]int) {
+	// Key is the page number, values must be before that page
+	orderingRules := make(map[int]mapset.Set[int])
+	updates := [][]int{}
 	var i int
 	var line string
 	for i, line = range entries {
@@ -74,31 +44,41 @@ func part2(entries []string) int {
 			break
 		}
 		rule := common.ConvertToInts(line)
-		s, ok := orderMap[rule[1]]
+		s, ok := orderingRules[rule[1]]
 		if !ok {
 			s = mapset.NewSet[int]()
-			orderMap[rule[1]] = s
+			orderingRules[rule[1]] = s
 		}
 		s.Add(rule[0])
 	}
-	// Now read each update
+	// Now for the second part
 	for _, line = range entries[i+1:] {
-		update := common.ConvertToInts(line)
+		updates = append(updates, common.ConvertToInts(line))
+	}
+	return orderingRules, updates
+}
+
+func part2(entries []string) int {
+	var total int
+	orderingRules, updates := readEntries(entries)
+	for _, update := range updates {
 		swapped := false
-	inner:
+	swapping:
 		for {
-			for left, pageNum := range update[:len(update)-1] {
-				for right, pageNum2 := range update[left+1:] {
-					if vals, ok := orderMap[pageNum]; ok && vals.Contains(pageNum2) {
+			for i, pageNum := range update[:len(update)-1] {
+				for j, pageNum2 := range update[i+1:] {
+					if preconditions, ok := orderingRules[pageNum]; ok && preconditions.Contains(pageNum2) {
+						// Out of order ... swap those two pages and start over
 						swapped = true
-						update = moveInt(update, right+left+1, left)
-						continue inner
+						update[i], update[i+j+1] = update[i+j+1], update[i]
+						continue swapping
 					}
 				}
 			}
 			if swapped {
 				total += update[len(update)/2]
 			}
+			// Move onto the next update
 			break
 		}
 	}
