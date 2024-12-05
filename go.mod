@@ -11,3 +11,6 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 )
+
+// Set
+require github.com/deckarep/golang-set/v2 v2.7.0
