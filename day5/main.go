@@ -21,14 +21,10 @@ func main() {
 func part1(entries []string) int {
 	var total int
 	orderingRules, updates := readEntries(entries)
-outer:
 	for _, update := range updates {
-		for i, pageNum := range update[:len(update)-1] {
-			if preconditions, ok := orderingRules[pageNum]; ok && preconditions.ContainsAny(update[i+1:]...) {
-				continue outer
-			}
+		if isOrdered(orderingRules, update) {
+			total += update[len(update)/2]
 		}
-		total += update[len(update)/2]
 	}
 	return total
 }
@@ -58,29 +54,36 @@ func readEntries(entries []string) (map[int]mapset.Set[int], [][]int) {
 	return orderingRules, updates
 }
 
+func isOrdered(orderingRules map[int]mapset.Set[int], pages []int) bool {
+	for i, pageNum := range pages[:len(pages)-1] {
+		if preconditions, ok := orderingRules[pageNum]; ok && preconditions.ContainsAny(pages[i+1:]...) {
+			return false
+		}
+	}
+	return true
+}
+
 func part2(entries []string) int {
 	var total int
 	orderingRules, updates := readEntries(entries)
 	for _, update := range updates {
-		swapped := false
-	swapping:
-		for {
-			for i, pageNum := range update[:len(update)-1] {
-				for j, pageNum2 := range update[i+1:] {
-					if preconditions, ok := orderingRules[pageNum]; ok && preconditions.Contains(pageNum2) {
-						// Out of order ... swap those two pages and start over
-						swapped = true
-						update[i], update[i+j+1] = update[i+j+1], update[i]
-						continue swapping
-					}
-				}
-			}
-			if swapped {
-				total += update[len(update)/2]
-			}
-			// Move onto the next update
-			break
+		if pages, outOfOrder := orderPages(orderingRules, update); outOfOrder {
+			total += pages[len(pages)/2]
 		}
 	}
 	return total
+}
+
+// Returns the ordered pages, and true if we had to make any changes
+func orderPages(orderingRules map[int]mapset.Set[int], pages []int) ([]int, bool) {
+	for i, pageNum := range pages[:len(pages)-1] {
+		for j, pageNum2 := range pages[i+1:] {
+			if preconditions, ok := orderingRules[pageNum]; ok && preconditions.Contains(pageNum2) {
+				pages[i], pages[i+j+1] = pages[i+j+1], pages[i]
+				pages, _ = orderPages(orderingRules, pages)
+				return pages, true
+			}
+		}
+	}
+	return pages, false
 }
