@@ -8,9 +8,9 @@ import (
 	"github.com/ghonzo/advent2024/common"
 )
 
-// Day 6:
+// Day 6: Guard Gallivant
 // Part 1 answer: 5080
-// Part 2 answer:
+// Part 2 answer: 1919
 func main() {
 	fmt.Println("Advent of Code 2024, Day 6")
 	entries := common.ReadStringsFromFile("input.txt")
@@ -19,35 +19,9 @@ func main() {
 }
 
 func part1(entries []string) int {
-	visited := mapset.NewSet[common.Point]()
 	grid := common.ArraysGridFromLines(entries)
-	dir := common.N
 	startPt := findStart(grid)
-	visited.Add(startPt)
-	for p := startPt; ; p = p.Add(dir) {
-		v, ok := grid.CheckedGet(p)
-		if !ok {
-			break
-		}
-		if v == '#' {
-			// undo the movement
-			p = p.Sub(dir)
-			// turn right
-			switch dir {
-			case common.N:
-				dir = common.E
-			case common.E:
-				dir = common.S
-			case common.S:
-				dir = common.W
-			case common.W:
-				dir = common.N
-			}
-		} else {
-			visited.Add(p)
-		}
-	}
-	return visited.Cardinality()
+	return len(findAllVisitedPoints(grid, startPt))
 }
 
 func findStart(g common.Grid) common.Point {
@@ -59,11 +33,33 @@ func findStart(g common.Grid) common.Point {
 	panic("no start")
 }
 
+func findAllVisitedPoints(g common.Grid, startPt common.Point) []common.Point {
+	visited := mapset.NewSet[common.Point]()
+	visited.Add(startPt)
+	for p, dir := startPt, common.N; ; p = p.Add(dir) {
+		v, ok := g.CheckedGet(p)
+		if !ok {
+			// escaped
+			break
+		}
+		if v == '#' {
+			// undo the movement
+			p = p.Sub(dir)
+			// and turn right
+			dir = dir.Right()
+		} else {
+			visited.Add(p)
+		}
+	}
+	return visited.ToSlice()
+}
+
 func part2(entries []string) int {
 	var total int
 	grid := common.ArraysGridFromLines(entries)
 	startPt := findStart(grid)
-	for p := range grid.AllPoints() {
+	// obstacle must be placed on a location we would have visited
+	for _, p := range findAllVisitedPoints(grid, startPt) {
 		if grid.Get(p) == '.' {
 			grid.Set(p, '#')
 			if stuckInLoop(grid, startPt) {
@@ -82,31 +78,20 @@ type posAndDir struct {
 
 func stuckInLoop(grid common.Grid, startPt common.Point) bool {
 	visited := mapset.NewSet[posAndDir]()
-	dir := common.N
-	for p := startPt; ; p = p.Add(dir) {
-		v, ok := grid.CheckedGet(p)
+	for pad := (posAndDir{pos: startPt, dir: common.N}); ; pad.pos = pad.pos.Add(pad.dir) {
+		v, ok := grid.CheckedGet(pad.pos)
 		if !ok {
 			// escaped
 			return false
 		}
 		if v == '#' {
 			// undo the movement
-			p = p.Sub(dir)
+			pad.pos = pad.pos.Sub(pad.dir)
 			// turn right
-			switch dir {
-			case common.N:
-				dir = common.E
-			case common.E:
-				dir = common.S
-			case common.S:
-				dir = common.W
-			case common.W:
-				dir = common.N
-			}
+			pad.dir = pad.dir.Right()
 		} else {
-			pad := posAndDir{pos: p, dir: dir}
 			if visited.Contains(pad) {
-				// loop
+				// loop detected
 				return true
 			}
 			visited.Add(pad)
