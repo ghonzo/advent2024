@@ -34,7 +34,7 @@ func findStart(g common.Grid) common.Point {
 }
 
 func findAllVisitedPoints(g common.Grid, startPt common.Point) []common.Point {
-	visited := mapset.NewSet[common.Point]()
+	visited := mapset.NewThreadUnsafeSet[common.Point]()
 	visited.Add(startPt)
 	for p, dir := startPt, common.N; ; p = p.Add(dir) {
 		v, ok := g.CheckedGet(p)
@@ -77,7 +77,7 @@ type posAndDir struct {
 }
 
 func stuckInLoop(grid common.Grid, startPt common.Point) bool {
-	visited := mapset.NewSet[posAndDir]()
+	visited := mapset.NewThreadUnsafeSet[posAndDir]()
 	for pad := (posAndDir{pos: startPt, dir: common.N}); ; pad.pos = pad.pos.Add(pad.dir) {
 		v, ok := grid.CheckedGet(pad.pos)
 		if !ok {
@@ -90,11 +90,10 @@ func stuckInLoop(grid common.Grid, startPt common.Point) bool {
 			// turn right
 			pad.dir = pad.dir.Right()
 		} else {
-			if visited.Contains(pad) {
-				// loop detected
+			if !visited.Add(pad) {
+				// not added, so loop detected
 				return true
 			}
-			visited.Add(pad)
 		}
 	}
 }
