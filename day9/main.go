@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/ghonzo/advent2024/common"
 )
@@ -17,123 +18,105 @@ func main() {
 	fmt.Printf("Part 2: %d\n", part2(entries))
 }
 
-func part1(entries []string) int {
-	var memory []int
-	var id int
-	file := true
-	for _, c := range []byte(entries[0]) {
-		n := int(c - '0')
-		var memoryValue int
-		if file {
-			memoryValue = id
-		} else {
-			// Empty
-			memoryValue = -1
-		}
-		for i := 0; i < n; i++ {
-			memory = append(memory, memoryValue)
-		}
-		if file {
-			file = false
-		} else {
-			id++
-			file = true
+type diskmap []int
+
+func (d diskmap) swap(i, j, n int) {
+	// This probably doesn't work if the ranges overlap fyi
+	for x := 0; x < n; x++ {
+		d[i+x], d[j+x] = d[j+x], d[i+x]
+	}
+}
+
+func (d diskmap) checksum() int {
+	var total int
+	for pos, fileId := range d {
+		if fileId >= 0 {
+			total += pos * fileId
 		}
 	}
+	return total
+}
+
+func part1(entries []string) int {
+	disk := readDiskmap(entries[0])
 	leftIndex := 0
-	rightIndex := len(memory) - 1
+	rightIndex := len(disk) - 1
 	for {
-		//fmt.Println(memory)
 		// Decrement right index until we find a non empty
-		for ; memory[rightIndex] < 0; rightIndex-- {
+		for ; disk[rightIndex] < 0; rightIndex-- {
 		}
 		// Increment left index until we find empty
-		for ; memory[leftIndex] >= 0; leftIndex++ {
+		for ; disk[leftIndex] >= 0; leftIndex++ {
 		}
 		if rightIndex <= leftIndex {
 			break
 		}
-		memory[rightIndex], memory[leftIndex] = memory[leftIndex], memory[rightIndex]
+		disk.swap(rightIndex, leftIndex, 1)
 	}
-	// Now checksum
-	var total int
-	for pos, m := range memory {
-		if m < 0 {
-			break
+	return disk.checksum()
+}
+
+func readDiskmap(s string) diskmap {
+	var disk diskmap
+	fileId := 0
+	expectFile := true
+	for _, c := range []byte(s) {
+		n := int(c - '0')
+		blockValue := -1
+		if expectFile {
+			blockValue = fileId
 		}
-		total += pos * m
+		for i := 0; i < n; i++ {
+			disk = append(disk, blockValue)
+		}
+		if !expectFile {
+			fileId++
+		}
+		expectFile = !expectFile
 	}
-	return total
+	return disk
 }
 
 func part2(entries []string) int {
-	var memory []int
-	var id int
-	file := true
-	for _, c := range []byte(entries[0]) {
-		n := int(c - '0')
-		var memoryValue int
-		if file {
-			memoryValue = id
-		} else {
-			// Empty
-			memoryValue = -1
-		}
-		for i := 0; i < n; i++ {
-			memory = append(memory, memoryValue)
-		}
-		if file {
-			file = false
-		} else {
-			id++
-			file = true
-		}
-	}
-	maxId := id + 1
-	rightIndex := len(memory) - 1
+	disk := readDiskmap(entries[0])
+	maxId := math.MaxInt
+	rightIndex := len(disk) - 1
 	for {
-		// Find the next memory chunk to move
+		// Find the next file to move
 		// Decrement right index until we find a non empty
-		for ; memory[rightIndex] < 0; rightIndex-- {
+		for ; disk[rightIndex] < 0; rightIndex-- {
 		}
-		// Save that id and indexPos
-		rid := memory[rightIndex]
+		// Save that fileId and indexPos
+		rid := disk[rightIndex]
 		if rid == 0 {
+			// reached the end
 			break
 		}
 		rightmostIndex := rightIndex
 		// Decrement until we get something different
-		for rightIndex--; memory[rightIndex] == rid; rightIndex-- {
+		for rightIndex--; disk[rightIndex] == rid; rightIndex-- {
 		}
 		// Make sure we aren't trying to move it twice
 		if rid < maxId {
-			moveFile(memory, rightIndex+1, rightmostIndex-rightIndex)
+			tryToMoveFile(disk, rightIndex+1, rightmostIndex-rightIndex)
 			maxId = min(rid, maxId)
 		}
 	}
-	// Now checksum
-	var total int
-	for pos, m := range memory {
-		if m >= 0 {
-			total += pos * m
-		}
-	}
-	return total
+	return disk.checksum()
 }
 
-// Return false if there is no way any more will work
-func moveFile(memory []int, index, size int) {
+func tryToMoveFile(disk diskmap, i, n int) {
 	var sizeEmpty int
-	for leftIndex := 0; leftIndex < index; leftIndex++ {
-		if memory[leftIndex] < 0 {
+	for leftIndex := 0; leftIndex < i; leftIndex++ {
+		if disk[leftIndex] < 0 {
 			sizeEmpty++
-			if sizeEmpty == size {
-				for i := 0; i < size; i++ {
-					memory[leftIndex-i], memory[index+i] = memory[index+i], memory[leftIndex-i]
-				}
+			if sizeEmpty == n {
+				// We found a blank chunk big enough
+				disk.swap(leftIndex-n+1, i, n)
 				return
 			}
 		} else {
+			// Keep looking
 			sizeEmpty = 0
 		}
 	}
