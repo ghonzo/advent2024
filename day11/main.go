@@ -19,6 +19,8 @@ func main() {
 }
 
 func part1(entries []string) int {
+	// This is the naive approach that won't scale (see part2), but it works
+	// fine for 25 iterations.
 	stones := common.ConvertToInts(entries[0])
 	for i := 0; i < 25; i++ {
 		var newStones []int
@@ -42,6 +44,7 @@ func blink(stone int) []int {
 
 func part2(entries []string) int {
 	// Let's use a map of stone -> number instead
+	// (We could go back and use this for part1 too, but we'll just leave it be)
 	stoneMap := make(map[int]int)
 	for _, v := range common.ConvertToInts(entries[0]) {
 		stoneMap[v]++
