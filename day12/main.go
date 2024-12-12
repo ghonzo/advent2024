@@ -18,13 +18,14 @@ func main() {
 	fmt.Printf("Part 2: %d\n", part2(entries))
 }
 
+// A fence is on a particular plot (pos) on a particular side (dir)
 type fence struct {
 	pos, dir common.Point
 }
 
 type region struct {
 	points mapset.Set[common.Point]
-	fence  mapset.Set[fence]
+	fences mapset.Set[fence]
 }
 
 func (r region) area() int {
@@ -32,20 +33,21 @@ func (r region) area() int {
 }
 
 func (r region) perimeter() int {
-	return r.fence.Cardinality()
+	return r.fences.Cardinality()
 }
 
 func (r region) sides() int {
 	var sides int
-	fencesToCount := r.fence.Clone()
+	fencesToCount := r.fences.Clone()
 	for !fencesToCount.IsEmpty() {
 		f, _ := fencesToCount.Pop()
 		sides++
 		if f.dir == common.N || f.dir == common.S {
-			// travel east and west
+			// travel east and west, removing contiguous fences
 			removeFences(fencesToCount, f, common.E)
 			removeFences(fencesToCount, f, common.W)
 		} else {
+			// travel north and south, removing contiguous fences
 			removeFences(fencesToCount, f, common.N)
 			removeFences(fencesToCount, f, common.S)
 		}
@@ -57,6 +59,7 @@ func removeFences(fences mapset.Set[fence], f fence, dir common.Point) {
 	for {
 		// f is a copy we can modify it
 		f.pos = f.pos.Add(dir)
+		// if the fence is on the same side of the plot, remove it
 		if fences.Contains(f) {
 			fences.Remove(f)
 		} else {
@@ -75,28 +78,32 @@ func part1(entries []string) int {
 		}
 		r := findRegion(grid, p)
 		total += r.area() * r.perimeter()
-		visited = visited.Union(r.points)
+		visited.Append(r.points.ToSlice()...)
 	}
 	return total
 }
 
 func findRegion(grid common.Grid, start common.Point) region {
 	var r region
-	plotType := grid.Get(start)
 	r.points = mapset.NewThreadUnsafeSet[common.Point]()
-	r.fence = mapset.NewThreadUnsafeSet[fence]()
+	r.fences = mapset.NewThreadUnsafeSet[fence]()
 	pointsToVisit := mapset.NewThreadUnsafeSet[common.Point](start)
+	plotType := grid.Get(start)
 	for !pointsToVisit.IsEmpty() {
-		// Check each of the surrounding points
+		// Pick a plot ... any plot
 		currentPt, _ := pointsToVisit.Pop()
 		r.points.Add(currentPt)
+		// Check each of the surrounding points
 		for p := range currentPt.SurroundingCardinals() {
 			if r.points.ContainsOne(p) {
+				// Already visited that one
 				continue
 			}
 			if v, _ := grid.CheckedGet(p); v != plotType {
-				r.fence.Add(fence{currentPt, p.Sub(currentPt)})
+				// Different type (or out of bounds), so add a fence
+				r.fences.Add(fence{currentPt, p.Sub(currentPt)})
 			} else {
+				// Same type, so add it to the region
 				pointsToVisit.Add(p)
 			}
 		}
@@ -114,7 +121,7 @@ func part2(entries []string) int {
 		}
 		r := findRegion(grid, p)
 		total += r.area() * r.sides()
-		visited = visited.Union(r.points)
+		visited.Append(r.points.ToSlice()...)
 	}
 	return total
 }
