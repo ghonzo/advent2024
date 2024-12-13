@@ -5,17 +5,16 @@ import (
 	"fmt"
 
 	"github.com/ghonzo/advent2024/common"
-	"github.com/oleiade/lane/v2"
 )
 
-// Day 13:
-// Part 1 answer:
-// Part 2 answer:
+// Day 13: Claw Contraption
+// Part 1 answer: 31589
+// Part 2 answer: 98080815200063
 func main() {
 	fmt.Println("Advent of Code 2024, Day 13")
 	entries := common.ReadStringsFromFile("input.txt")
 	fmt.Printf("Part 1: %d\n", part1(entries))
-	//fmt.Printf("Part 2: %d\n", part2(entries))
+	fmt.Printf("Part 2: %d\n", part2(entries))
 }
 
 func part1(entries []string) int {
@@ -24,7 +23,8 @@ func part1(entries []string) int {
 		a := parsePoint(entries[i])
 		b := parsePoint(entries[i+1])
 		prize := parsePoint(entries[i+2])
-		total += minTokens(a, b, prize)
+		// fyi, you can swap this out with part2 solution function "solve" and it also works
+		total += search(a, b, prize)
 	}
 	return total
 }
@@ -34,58 +34,54 @@ func parsePoint(s string) common.Point {
 	return common.NewPoint(values[0], values[1])
 }
 
-type state struct {
-	steps int
-	pos   common.Point
-	cost  int
-}
-
 const costA = 3
 const costB = 1
 
-func minTokens(a, b, prize common.Point) int {
-	fmt.Println(a, b, prize)
-	pq := lane.NewMinPriorityQueue[state, int]()
-	pq.Push(state{}, 0)
+// Do a brute-force search of the problems space. Return the minimum
+// cost or 0 if no solution.
+func search(a, b, prize common.Point) int {
 	var minCost int
-	for !pq.Empty() {
-		s, _, _ := pq.Pop()
-		if minCost > 0 && s.cost >= minCost {
-			continue
-		}
-		if s.pos == prize {
-			minCost = s.cost
-			fmt.Println("New min ", minCost)
-			continue
-		}
-		if s.steps < 100 {
-			// Try A
-			stateA := state{s.steps + 1, s.pos.Add(a), s.cost + costA}
-			if stateA.pos.X() <= prize.X() && stateA.pos.Y() <= prize.Y() {
-				pq.Push(stateA, prize.Sub(stateA.pos).ManhattanDistance())
-			}
-			// And B
-			stateB := state{s.steps + 1, s.pos.Add(b), s.cost + costB}
-			if stateB.pos.X() <= prize.X() && stateB.pos.Y() <= prize.Y() {
-				pq.Push(stateB, prize.Sub(stateB.pos).ManhattanDistance())
+	for aPress := 0; aPress < 100; aPress++ {
+		for bPress := 0; bPress < 100; bPress++ {
+			if a.Times(aPress).Add(b.Times(bPress)) == prize {
+				cost := aPress*costA + bPress*costB
+				if minCost == 0 || cost < minCost {
+					minCost = cost
+				}
 			}
 		}
 	}
 	// No solutions
-	return 0
+	return minCost
 }
 
 func part2(entries []string) int {
+	// Brute force isn't going to cut it like part 1.
+	// Went down a rabbit hole, looking at Extended Euclidean
+	// Algorithm before realizing that this is just a simple system
+	// of two equations that we just have to make sure has an integer
+	// solution. So Cramer's Rule helped with that.
 	var total int
-	left := make([]int, len(entries))
-	rightMap := make(map[int]int)
-	for i, line := range entries {
-		values := common.ConvertToInts(line)
-		left[i] = values[0]
-		rightMap[values[1]]++
-	}
-	for _, l := range left {
-		total += l * rightMap[l]
+	adjustment := common.NewPoint(10000000000000, 10000000000000)
+	for i := 0; i < len(entries); i += 4 {
+		a := parsePoint(entries[i])
+		b := parsePoint(entries[i+1])
+		prize := parsePoint(entries[i+2]).Add(adjustment)
+		total += solve(a, b, prize)
 	}
 	return total
+}
+
+// Returns 0 if no solution, otherwise returns the total cost
+func solve(a, b, prize common.Point) int {
+	// The hardest part of this is keeping the variable names straight!
+	// This is Cramer's Rule (https://en.wikipedia.org/wiki/Cramer%27s_rule#Explicit_formulas_for_small_systems)
+	denom := a.X()*b.Y() - b.X()*a.Y()
+	aPress := (prize.X()*b.Y() - b.X()*prize.Y()) / denom
+	bPress := (a.X()*prize.Y() - prize.X()*a.Y()) / denom
+	// Now check to see if we ended up truncating to get to integers
+	if aPress*a.X()+bPress*b.X() != prize.X() || aPress*a.Y()+bPress*b.Y() != prize.Y() {
+		return 0
+	}
+	return aPress*costA + bPress*costB
 }

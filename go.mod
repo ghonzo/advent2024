@@ -14,6 +14,3 @@ require (
 
 // Set
 require github.com/deckarep/golang-set/v2 v2.7.0
-
-// Priority queue (Used in day 13)
-require github.com/oleiade/lane/v2 v2.0.0
