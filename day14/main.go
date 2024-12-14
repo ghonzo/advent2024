@@ -48,43 +48,28 @@ func part1(entries []string, width, height int) int {
 
 func part2(entries []string) int {
 	bounds := common.NewPoint(101, 103)
-	halfWidth := bounds.X() / 2
-	var robots []robot
+	var robots []*robot
 	for _, line := range entries {
 		group := robotRegexp.FindStringSubmatch(line)
-		robots = append(robots, robot{common.NewPoint(common.Atoi(group[1]), common.Atoi(group[2])), common.NewPoint(common.Atoi(group[3]), common.Atoi(group[4]))})
+		robots = append(robots, &robot{common.NewPoint(common.Atoi(group[1]), common.Atoi(group[2])), common.NewPoint(common.Atoi(group[3]), common.Atoi(group[4]))})
 	}
 	// Keep looping until they are all contiguous and not overlapping
-	var step int
-outer:
-	for {
-		step++
+	for step := 1; step < 100; step++ {
 		locMap := make(map[common.Point]int)
 		// Update robot positions
 		for _, r := range robots {
 			r.p = pointMod(r.p.Add(r.v), bounds)
-			if _, ok := locMap[r.p]; ok {
-				continue outer
-			} else {
-				locMap[r.p]++
-			}
-		}
-		// Now that they are all there, confirm that there's another one symmetrical across middle
-		for p := range locMap {
-			diff := p.X() - halfWidth
-			if _, ok := locMap[common.NewPoint(halfWidth-diff, p.Y())]; !ok {
-				continue outer
-			}
+			locMap[r.p]++
 		}
 		// We might have it
-		grid := common.NewArraysGrid(101, 103)
+		grid := common.NewSparseGrid()
 		for p := range locMap {
 			grid.Set(p, '*')
 		}
+		fmt.Println("STEP ", step)
 		fmt.Print(common.RenderGrid(grid, '.'))
-		break
 	}
-	return step
+	return 0
 }
 
 func pointMod(p, bounds common.Point) common.Point {
