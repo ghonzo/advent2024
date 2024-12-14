@@ -61,6 +61,11 @@ func LCM(a, b int, integers ...int) int {
 	return result
 }
 
+// Mod like python, where if a is negative you return a positive
+func Mod(a, b int) int {
+	return (a%b + b) % b
+}
+
 var sep = regexp.MustCompile(`\D+`)
 
 // Converts a string of ints separated by anything non-numeric into an int slice.
