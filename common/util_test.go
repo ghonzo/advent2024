@@ -124,3 +124,27 @@ func TestConvertToInts(t *testing.T) {
 		})
 	}
 }
+
+func TestMod(t *testing.T) {
+	type args struct {
+		a int
+		b int
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{"pos pos", args{11, 5}, 1},
+		{"neg pos", args{-11, 5}, 4},
+		{"pos neg", args{11, -5}, -4},
+		{"neg neg", args{-11, -5}, -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Mod(tt.args.a, tt.args.b); got != tt.want {
+				t.Errorf("Mod() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

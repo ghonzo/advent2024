@@ -10,66 +10,78 @@ import (
 
 // Day 14: Restroom Redoubt
 // Part 1 answer: 229632480
-// Part 2 answer:
+// Part 2 answer: 7051
+
+// The real size of the space for the robots
+var spaceDim = common.NewPoint(101, 103)
+
 func main() {
 	fmt.Println("Advent of Code 2024, Day 14")
 	entries := common.ReadStringsFromFile("input.txt")
-	fmt.Printf("Part 1: %d\n", part1(entries, 101, 103))
+	fmt.Printf("Part 1: %d\n", part1(entries, spaceDim))
 	fmt.Printf("Part 2: %d\n", part2(entries))
 }
-
-var robotRegexp = regexp.MustCompile(`p=(\d+),(\d+) v=(-?\d+),(-?\d+)`)
 
 type robot struct {
 	p, v common.Point
 }
 
-func part1(entries []string, width, height int) int {
-	var nw, ne, se, sw int
-	for _, line := range entries {
-		group := robotRegexp.FindStringSubmatch(line)
-		r := robot{common.NewPoint(common.Atoi(group[1]), common.Atoi(group[2])), common.NewPoint(common.Atoi(group[3]), common.Atoi(group[4]))}
+func part1(entries []string, bounds common.Point) int {
+	halfBounds := common.NewPoint(bounds.X()/2, bounds.Y()/2)
+	quadrantCount := make(map[common.Point]int)
+	for _, r := range readRobots(entries) {
 		// find final pos
 		pos := r.p.Add(r.v.Times(100))
-		// find the quadrant
-		x, y := common.Mod(pos.X(), width), common.Mod(pos.Y(), height)
-		if x < (width)/2 && y < (height)/2 {
-			nw++
-		} else if x < (width)/2 && y > (height)/2 {
-			sw++
-		} else if x > (width)/2 && y < (height)/2 {
-			ne++
-		} else if x > (width)/2 && y > (height)/2 {
-			se++
-		}
+		// mod it to the bounds of the space
+		pos = pointMod(pos, bounds)
+		// Find the quadrant
+		pos = pos.Sub(halfBounds)
+		quadrant := common.NewPoint(common.Sgn(pos.X()), common.Sgn(pos.Y()))
+		quadrantCount[quadrant]++
 	}
-	return nw * sw * ne * se
+	return quadrantCount[common.NW] * quadrantCount[common.NE] * quadrantCount[common.SW] * quadrantCount[common.SE]
+}
+
+var robotRegexp = regexp.MustCompile(`p=(\d+),(\d+) v=(-?\d+),(-?\d+)`)
+
+func readRobots(lines []string) []*robot {
+	robots := make([]*robot, len(lines))
+	for i, line := range lines {
+		group := robotRegexp.FindStringSubmatch(line)
+		robots[i] = &robot{common.NewPoint(common.Atoi(group[1]), common.Atoi(group[2])),
+			common.NewPoint(common.Atoi(group[3]), common.Atoi(group[4]))}
+	}
+	return robots
 }
 
 func part2(entries []string) int {
-	bounds := common.NewPoint(101, 103)
-	var robots []*robot
-	for _, line := range entries {
-		group := robotRegexp.FindStringSubmatch(line)
-		robots = append(robots, &robot{common.NewPoint(common.Atoi(group[1]), common.Atoi(group[2])), common.NewPoint(common.Atoi(group[3]), common.Atoi(group[4]))})
-	}
-	// Keep looping until they are all contiguous and not overlapping
-	for step := 1; step < 100; step++ {
+	robots := readRobots(entries)
+	// Keep looping until they are not overlapping
+	var step int
+	for step = 1; ; step++ {
+		// Number of robots at a given point
 		locMap := make(map[common.Point]int)
+		// Set to true if more than one robot at a point
+		overlap := false
 		// Update robot positions
 		for _, r := range robots {
-			r.p = pointMod(r.p.Add(r.v), bounds)
+			r.p = pointMod(r.p.Add(r.v), spaceDim)
 			locMap[r.p]++
+			if locMap[r.p] > 1 {
+				overlap = true
+			}
 		}
-		// We might have it
-		grid := common.NewSparseGrid()
-		for p := range locMap {
-			grid.Set(p, '*')
+		if !overlap {
+			break
 		}
-		fmt.Println("STEP ", step)
-		fmt.Print(common.RenderGrid(grid, '.'))
 	}
-	return 0
+	// Let's have a look!
+	grid := common.NewSparseGrid()
+	for _, r := range robots {
+		grid.Set(r.p, '*')
+	}
+	fmt.Print(common.RenderGrid(grid, '.'))
+	return step
 }
 
 func pointMod(p, bounds common.Point) common.Point {
