@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/ghonzo/advent2024/common"
@@ -15,7 +16,7 @@ func main() {
 	fmt.Println("Advent of Code 2024, Day 15")
 	entries := common.ReadStringsFromFile("input.txt")
 	fmt.Printf("Part 1: %d\n", part1(entries))
-	//fmt.Printf("Part 2: %d\n", part2(entries))
+	fmt.Printf("Part 2: %d\n", part2(entries))
 }
 
 func part1(entries []string) int {
@@ -92,16 +93,86 @@ func scoreGrid(grid common.Grid) int {
 }
 
 func part2(entries []string) int {
-	var total int
-	left := make([]int, len(entries))
-	rightMap := make(map[int]int)
-	for i, line := range entries {
-		values := common.ConvertToInts(line)
-		left[i] = values[0]
-		rightMap[values[1]]++
+	var grid common.Grid
+	var moves []byte
+	for i := 0; ; i++ {
+		// Expand entries
+		entries[i] = expandGrid(entries[i])
+		if len(entries[i]) == 0 {
+			grid = common.ArraysGridFromLines(entries[:i])
+			moves = []byte(strings.Join(entries[i+1:], ""))
+			break
+		}
 	}
-	for _, l := range left {
-		total += l * rightMap[l]
+	var robot common.Point
+	for p := range grid.AllPoints() {
+		if grid.Get(p) == '@' {
+			robot = p
+			break
+		}
+	}
+	// Now process the moves
+	for _, b := range moves {
+		dir := convertMove(b)
+		robot = moveRobot2(grid, robot, dir)
+	}
+	return scoreGrid2(grid)
+}
+
+var replacer = strings.NewReplacer("#", "##", "O", "[]", ".", "..", "@", "@.")
+
+func expandGrid(s string) string {
+	return replacer.Replace(s)
+}
+
+func moveRobot2(grid common.Grid, robot common.Point, dir common.Point) common.Point {
+	// East and west is the same as before
+	if dir == common.E || dir == common.W {
+		return moveRobot(grid, robot, dir)
+	}
+	// North and south are more complicated
+	allMovedPoints := []common.Point{}
+	movingPoints := []common.Point{robot}
+	for {
+		var newMovingPoints []common.Point
+		nonspace := false
+		for _, mp := range movingPoints {
+			nmp := mp.Add(dir)
+			v := grid.Get(nmp)
+			if v == '#' {
+				// Nothing moves
+				return robot
+			}
+			newMovingPoints = append(newMovingPoints, nmp)
+			if v == '[' {
+				newMovingPoints = append(newMovingPoints, nmp.Add(common.E))
+				nonspace = true
+			} else if v == ']' {
+				newMovingPoints = append(newMovingPoints, nmp.Add(common.W))
+				nonspace = true
+			}
+		}
+		movingPoints = newMovingPoints
+		allMovedPoints = append(allMovedPoints, movingPoints...)
+		if !nonspace {
+			break
+		}
+	}
+	// Now we shift everything that moved
+	slices.Reverse(allMovedPoints)
+	for _, p := range allMovedPoints {
+		grid.Set(p, grid.Get(p.Sub(dir)))
+	}
+	grid.Set(robot, '.')
+	return robot.Add(dir)
+}
+
+func scoreGrid2(grid common.Grid) int {
+	var total int
+	for p := range grid.AllPoints() {
+		if grid.Get(p) == '[' {
+			total += p.X() + 100*p.Y()
+		}
 	}
 	return total
 }
