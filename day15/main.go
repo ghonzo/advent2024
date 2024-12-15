@@ -115,6 +115,8 @@ func part2(entries []string) int {
 	for _, b := range moves {
 		dir := convertMove(b)
 		robot = moveRobot2(grid, robot, dir)
+		//fmt.Printf("MOVE %d:\n", b)
+		//fmt.Println(common.RenderGrid(grid))
 	}
 	return scoreGrid2(grid)
 }
@@ -132,6 +134,7 @@ func moveRobot2(grid common.Grid, robot common.Point, dir common.Point) common.P
 	}
 	// North and south are more complicated
 	allMovedPoints := []common.Point{}
+	newEmptyPoints := []common.Point{robot}
 	movingPoints := []common.Point{robot}
 	for {
 		var newMovingPoints []common.Point
@@ -143,17 +146,27 @@ func moveRobot2(grid common.Grid, robot common.Point, dir common.Point) common.P
 				// Nothing moves
 				return robot
 			}
-			newMovingPoints = append(newMovingPoints, nmp)
+			if v != '.' {
+				newMovingPoints = append(newMovingPoints, nmp)
+			}
 			if v == '[' {
-				newMovingPoints = append(newMovingPoints, nmp.Add(common.E))
+				adjPoint := nmp.Add(common.E)
+				if !slices.Contains(movingPoints, adjPoint.Sub(dir)) {
+					newMovingPoints = append(newMovingPoints, adjPoint)
+					newEmptyPoints = append(newEmptyPoints, adjPoint)
+				}
 				nonspace = true
 			} else if v == ']' {
-				newMovingPoints = append(newMovingPoints, nmp.Add(common.W))
+				adjPoint := nmp.Add(common.W)
+				if !slices.Contains(movingPoints, adjPoint.Sub(dir)) {
+					newMovingPoints = append(newMovingPoints, adjPoint)
+					newEmptyPoints = append(newEmptyPoints, adjPoint)
+				}
 				nonspace = true
 			}
+			allMovedPoints = append(allMovedPoints, nmp)
 		}
 		movingPoints = newMovingPoints
-		allMovedPoints = append(allMovedPoints, movingPoints...)
 		if !nonspace {
 			break
 		}
@@ -163,7 +176,9 @@ func moveRobot2(grid common.Grid, robot common.Point, dir common.Point) common.P
 	for _, p := range allMovedPoints {
 		grid.Set(p, grid.Get(p.Sub(dir)))
 	}
-	grid.Set(robot, '.')
+	for _, p := range newEmptyPoints {
+		grid.Set(p, '.')
+	}
 	return robot.Add(dir)
 }
 
