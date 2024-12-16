@@ -3,23 +3,39 @@ package main
 
 import (
 	"fmt"
+	"math"
+	"slices"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ghonzo/advent2024/common"
 	"github.com/oleiade/lane/v2"
 )
 
 // Day 16:
 // Part 1 answer: 95444
-// Part 2 answer:
+// Part 2 answer: 513
 func main() {
 	fmt.Println("Advent of Code 2024, Day 16")
 	entries := common.ReadStringsFromFile("input.txt")
 	fmt.Printf("Part 1: %d\n", part1(entries))
-	//fmt.Printf("Part 2: %d\n", part2(entries))
+	fmt.Printf("Part 2: %d\n", part2(entries))
 }
 
 type state struct {
+	path []common.Point
+	dir  common.Point
+}
+
+func (s state) pos() common.Point {
+	return s.path[len(s.path)-1]
+}
+
+type posAndDir struct {
 	pos, dir common.Point
+}
+
+func (s state) asPosAndDir() posAndDir {
+	return posAndDir{s.pos(), s.dir}
 }
 
 func part1(entries []string) int {
@@ -33,32 +49,34 @@ func part1(entries []string) int {
 			end = p
 		}
 	}
-	minCost := make(map[state]int)
+	minCost := make(map[posAndDir]int)
 	pq := lane.NewMinPriorityQueue[state, int]()
-	pq.Push(state{start, common.E}, 0)
+	pq.Push(state{[]common.Point{start}, common.E}, 0)
 	for !pq.Empty() {
 		curState, score, _ := pq.Pop()
 		// Finish state
-		if curState.pos == end {
+		if curState.pos() == end {
 			return score
 		}
 		// Find all the possible new states
 		// Move forward
-		newState := state{curState.pos.Add(curState.dir), curState.dir}
+		newPath := slices.Clone(curState.path)
+		newPath = append(newPath, curState.pos().Add(curState.dir))
+		newState := state{newPath, curState.dir}
 		newScore := score + 1
-		if v, ok := maze.CheckedGet(newState.pos); ok && v != '#' {
+		if v, ok := maze.CheckedGet(newState.pos()); ok && v != '#' {
 			if possibleNewState(minCost, newState, newScore) {
 				pq.Push(newState, newScore)
 			}
 		}
 		// Turn right
-		newState = state{curState.pos, curState.dir.Right()}
+		newState = state{curState.path, curState.dir.Right()}
 		newScore = score + 1000
 		if possibleNewState(minCost, newState, newScore) {
 			pq.Push(newState, newScore)
 		}
 		// Or turn left
-		newState = state{curState.pos, curState.dir.Left()}
+		newState = state{curState.path, curState.dir.Left()}
 		if possibleNewState(minCost, newState, newScore) {
 			pq.Push(newState, newScore)
 		}
@@ -66,25 +84,74 @@ func part1(entries []string) int {
 	panic("failed")
 }
 
-func possibleNewState(minCost map[state]int, s state, score int) bool {
-	if v, ok := minCost[s]; !ok || score < v {
-		minCost[s] = score
+func possibleNewState(minCost map[posAndDir]int, s state, score int) bool {
+	pad := s.asPosAndDir()
+	if v, ok := minCost[pad]; !ok || score < v {
+		minCost[pad] = score
 		return true
 	}
 	return false
 }
 
 func part2(entries []string) int {
-	var total int
-	left := make([]int, len(entries))
-	rightMap := make(map[int]int)
-	for i, line := range entries {
-		values := common.ConvertToInts(line)
-		left[i] = values[0]
-		rightMap[values[1]]++
+	maze := common.ArraysGridFromLines(entries)
+	var start, end common.Point
+	for p := range maze.AllPoints() {
+		switch maze.Get(p) {
+		case 'S':
+			start = p
+		case 'E':
+			end = p
+		}
 	}
-	for _, l := range left {
-		total += l * rightMap[l]
+	minCost := make(map[posAndDir]int)
+	bestPathCost := math.MaxInt
+	allBestPathsPoints := mapset.NewThreadUnsafeSet[common.Point]()
+	pq := lane.NewMinPriorityQueue[state, int]()
+	pq.Push(state{[]common.Point{start}, common.E}, 0)
+	for !pq.Empty() {
+		curState, score, _ := pq.Pop()
+		// Finish state
+		if curState.pos() == end {
+			if score <= bestPathCost {
+				allBestPathsPoints.Append(curState.path...)
+				bestPathCost = score
+			} else {
+				// We're done
+				return allBestPathsPoints.Cardinality()
+			}
+		}
+		// Find all the possible new states
+		// Move forward
+		newPath := slices.Clone(curState.path)
+		newPath = append(newPath, curState.pos().Add(curState.dir))
+		newState := state{newPath, curState.dir}
+		newScore := score + 1
+		if v, ok := maze.CheckedGet(newState.pos()); ok && v != '#' {
+			if possibleNewState2(minCost, newState, newScore) {
+				pq.Push(newState, newScore)
+			}
+		}
+		// Turn right
+		newState = state{curState.path, curState.dir.Right()}
+		newScore = score + 1000
+		if possibleNewState2(minCost, newState, newScore) {
+			pq.Push(newState, newScore)
+		}
+		// Or turn left
+		newState = state{curState.path, curState.dir.Left()}
+		if possibleNewState2(minCost, newState, newScore) {
+			pq.Push(newState, newScore)
+		}
 	}
-	return total
+	panic("failed")
+}
+
+func possibleNewState2(minCost map[posAndDir]int, s state, score int) bool {
+	pad := s.asPosAndDir()
+	if v, ok := minCost[pad]; !ok || score <= v {
+		minCost[pad] = score
+		return true
+	}
+	return false
 }
