@@ -11,7 +11,7 @@ import (
 
 // Day 15: Warehouse Woes
 // Part 1 answer: 1527563
-// Part 2 answer:
+// Part 2 answer: 1521635
 func main() {
 	fmt.Println("Advent of Code 2024, Day 15")
 	entries := common.ReadStringsFromFile("input.txt")
@@ -20,28 +20,31 @@ func main() {
 }
 
 func part1(entries []string) int {
-	var grid common.Grid
-	var moves []byte
-	for i := 0; ; i++ {
-		if len(entries[i]) == 0 {
-			grid = common.ArraysGridFromLines(entries[:i])
-			moves = []byte(strings.Join(entries[i+1:], ""))
-			break
-		}
-	}
-	var robot common.Point
-	for p := range grid.AllPoints() {
-		if grid.Get(p) == '@' {
-			robot = p
-			break
-		}
-	}
+	grid, moves := readGridAndMoves(entries)
+	robot := findRobot(grid)
 	// Now process the moves
 	for _, b := range moves {
 		dir := convertMove(b)
 		robot = moveRobot(grid, robot, dir)
 	}
 	return scoreGrid(grid)
+}
+
+func readGridAndMoves(entries []string) (common.Grid, []byte) {
+	for i := 0; ; i++ {
+		if len(entries[i]) == 0 {
+			return common.ArraysGridFromLines(entries[:i]), []byte(strings.Join(entries[i+1:], ""))
+		}
+	}
+}
+
+func findRobot(grid common.Grid) common.Point {
+	for p := range grid.AllPoints() {
+		if grid.Get(p) == '@' {
+			return p
+		}
+	}
+	panic("no robot")
 }
 
 func convertMove(b byte) common.Point {
@@ -93,30 +96,16 @@ func scoreGrid(grid common.Grid) int {
 }
 
 func part2(entries []string) int {
-	var grid common.Grid
-	var moves []byte
-	for i := 0; ; i++ {
-		// Expand entries
+	// First, expand the entries
+	for i := 0; len(entries[i]) > 0; i++ {
 		entries[i] = expandGrid(entries[i])
-		if len(entries[i]) == 0 {
-			grid = common.ArraysGridFromLines(entries[:i])
-			moves = []byte(strings.Join(entries[i+1:], ""))
-			break
-		}
 	}
-	var robot common.Point
-	for p := range grid.AllPoints() {
-		if grid.Get(p) == '@' {
-			robot = p
-			break
-		}
-	}
+	grid, moves := readGridAndMoves(entries)
+	robot := findRobot(grid)
 	// Now process the moves
 	for _, b := range moves {
 		dir := convertMove(b)
 		robot = moveRobot2(grid, robot, dir)
-		//fmt.Printf("MOVE %d:\n", b)
-		//fmt.Println(common.RenderGrid(grid))
 	}
 	return scoreGrid2(grid)
 }
