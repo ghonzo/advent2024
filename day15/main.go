@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ghonzo/advent2024/common"
 )
 
@@ -122,50 +123,32 @@ func moveRobot2(grid common.Grid, robot common.Point, dir common.Point) common.P
 		return moveRobot(grid, robot, dir)
 	}
 	// North and south are more complicated
-	allMovedPoints := []common.Point{}
-	newEmptyPoints := []common.Point{robot}
-	movingPoints := []common.Point{robot}
-	for {
-		var newMovingPoints []common.Point
-		nonspace := false
-		for _, mp := range movingPoints {
-			nmp := mp.Add(dir)
-			v := grid.Get(nmp)
+	var movingPoints []common.Point
+	leadingEdge := mapset.NewThreadUnsafeSet[common.Point](robot)
+	for !leadingEdge.IsEmpty() {
+		newLeadingEdge := mapset.NewThreadUnsafeSet[common.Point]()
+		for p := range leadingEdge.Iter() {
+			movingPoints = append(movingPoints, p)
+			p = p.Add(dir)
+			v := grid.Get(p)
 			if v == '#' {
-				// Nothing moves
+				// Nothing can move
 				return robot
 			}
-			if v != '.' {
-				newMovingPoints = append(newMovingPoints, nmp)
-			}
 			if v == '[' {
-				adjPoint := nmp.Add(common.E)
-				if !slices.Contains(movingPoints, adjPoint.Sub(dir)) {
-					newMovingPoints = append(newMovingPoints, adjPoint)
-					newEmptyPoints = append(newEmptyPoints, adjPoint)
-				}
-				nonspace = true
+				newLeadingEdge.Add(p)
+				newLeadingEdge.Add(p.Add(common.E))
 			} else if v == ']' {
-				adjPoint := nmp.Add(common.W)
-				if !slices.Contains(movingPoints, adjPoint.Sub(dir)) {
-					newMovingPoints = append(newMovingPoints, adjPoint)
-					newEmptyPoints = append(newEmptyPoints, adjPoint)
-				}
-				nonspace = true
+				newLeadingEdge.Add(p)
+				newLeadingEdge.Add(p.Add(common.W))
 			}
-			allMovedPoints = append(allMovedPoints, nmp)
 		}
-		movingPoints = newMovingPoints
-		if !nonspace {
-			break
-		}
+		leadingEdge = newLeadingEdge
 	}
-	// Now we shift everything that moved
-	slices.Reverse(allMovedPoints)
-	for _, p := range allMovedPoints {
-		grid.Set(p, grid.Get(p.Sub(dir)))
-	}
-	for _, p := range newEmptyPoints {
+	// Cool, so we can move all the points in movingPoints (in reverse order)
+	slices.Reverse(movingPoints)
+	for _, p := range movingPoints {
+		grid.Set(p.Add(dir), grid.Get(p))
 		grid.Set(p, '.')
 	}
 	return robot.Add(dir)
