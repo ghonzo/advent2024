@@ -26,9 +26,27 @@ type posAndDir struct {
 	pos, dir common.Point
 }
 
+// This helps us keep track of the minimum score for each position and orientation
+type pathFinder struct {
+	minScore     map[posAndDir]int
+	includeEqual bool
+}
+
+func newPathFinder(includeEqual bool) *pathFinder {
+	return &pathFinder{make(map[posAndDir]int), includeEqual}
+}
+
+func (pf *pathFinder) isPotentialPath(pad posAndDir, score int) bool {
+	if v, ok := pf.minScore[pad]; !ok || score < v || (pf.includeEqual && score == v) {
+		pf.minScore[pad] = score
+		return true
+	}
+	return false
+}
+
 func part1(entries []string) int {
 	maze, start, end := readMaze(entries)
-	minCost := make(map[posAndDir]int)
+	pf := newPathFinder(false)
 	pq := lane.NewMinPriorityQueue[posAndDir, int]()
 	pq.Push(posAndDir{start, common.E}, 0)
 	for !pq.Empty() {
@@ -43,19 +61,19 @@ func part1(entries []string) int {
 		if v, ok := maze.CheckedGet(p); ok && v != '#' {
 			newPad := posAndDir{p, curPad.dir}
 			newScore := score + 1
-			if potentialPath(minCost, newPad, newScore, false) {
+			if pf.isPotentialPath(newPad, newScore) {
 				pq.Push(newPad, newScore)
 			}
 		}
 		// Turn right
 		newPad := posAndDir{curPad.pos, curPad.dir.Right()}
 		newScore := score + 1000
-		if potentialPath(minCost, newPad, newScore, false) {
+		if pf.isPotentialPath(newPad, newScore) {
 			pq.Push(newPad, newScore)
 		}
 		// Turn left
 		newPad = posAndDir{curPad.pos, curPad.dir.Left()}
-		if potentialPath(minCost, newPad, newScore, false) {
+		if pf.isPotentialPath(newPad, newScore) {
 			pq.Push(newPad, newScore)
 		}
 	}
@@ -76,15 +94,6 @@ func readMaze(entries []string) (maze common.Grid, start, end common.Point) {
 	return
 }
 
-// If this represents a potential minimum cost path, return true
-func potentialPath(minCost map[posAndDir]int, pad posAndDir, score int, includeEqual bool) bool {
-	if v, ok := minCost[pad]; !ok || score < v || (includeEqual && score == v) {
-		minCost[pad] = score
-		return true
-	}
-	return false
-}
-
 // For part2, we need to retain the entire path
 type state struct {
 	path []common.Point
@@ -101,7 +110,7 @@ func (s state) asPosAndDir() posAndDir {
 
 func part2(entries []string) int {
 	maze, start, end := readMaze(entries)
-	minCost := make(map[posAndDir]int)
+	pf := newPathFinder(true)
 	bestPathCost := math.MaxInt
 	// All the points that are part of the optimal paths are in this set
 	allBestPathsPoints := mapset.NewThreadUnsafeSet[common.Point]()
@@ -124,7 +133,7 @@ func part2(entries []string) int {
 		p := curState.pos().Add(curState.dir)
 		if v, ok := maze.CheckedGet(p); ok && v != '#' {
 			newScore := score + 1
-			if potentialPath(minCost, posAndDir{p, curState.dir}, newScore, true) {
+			if pf.isPotentialPath(posAndDir{p, curState.dir}, newScore) {
 				newPath := slices.Clone(curState.path)
 				newPath = append(newPath, p)
 				pq.Push(state{newPath, curState.dir}, newScore)
@@ -133,12 +142,12 @@ func part2(entries []string) int {
 		// Turn right
 		newState := state{curState.path, curState.dir.Right()}
 		newScore := score + 1000
-		if potentialPath(minCost, newState.asPosAndDir(), newScore, true) {
+		if pf.isPotentialPath(newState.asPosAndDir(), newScore) {
 			pq.Push(newState, newScore)
 		}
 		// Or turn left
 		newState = state{curState.path, curState.dir.Left()}
-		if potentialPath(minCost, newState.asPosAndDir(), newScore, true) {
+		if pf.isPotentialPath(newState.asPosAndDir(), newScore) {
 			pq.Push(newState, newScore)
 		}
 	}
