@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -16,7 +17,7 @@ func main() {
 	fmt.Println("Advent of Code 2024, Day 17")
 	entries := common.ReadStringsFromFile("input.txt")
 	fmt.Printf("Part 1: %s\n", part1(entries))
-	//fmt.Printf("Part 2: %d\n", part2(entries))
+	fmt.Printf("Part 2: %d\n", part2(entries))
 }
 
 type registerStore [3]int
@@ -28,9 +29,19 @@ func (r registerStore) combo(operand int) int {
 	return r[operand-4]
 }
 
+func (r registerStore) String() string {
+	return fmt.Sprintf("A=%o, B=%o, C=%o", r[0], r[1], r[2])
+}
+
 func part1(entries []string) string {
-	registers := registerStore{common.ConvertToInts(entries[0])[0], common.ConvertToInts(entries[1])[0], common.ConvertToInts(entries[2])[0]}
+	// Every example has b and c as 0, so we just care about a
+	a := common.ConvertToInts(entries[0])[0]
 	program := common.ConvertToInts(entries[4])
+	return intsToString(runProgram(a, program))
+}
+
+func runProgram(a int, program []int) []int {
+	registers := registerStore{a, 0, 0}
 	var ip int
 	var output []int
 	for ip < len(program) {
@@ -58,7 +69,7 @@ func part1(entries []string) string {
 			registers[2] = registers[0] / (1 << registers.combo(operand))
 		}
 	}
-	return intsToString(output)
+	return output
 }
 
 func intsToString(ints []int) string {
@@ -70,16 +81,19 @@ func intsToString(ints []int) string {
 }
 
 func part2(entries []string) int {
-	var total int
-	left := make([]int, len(entries))
-	rightMap := make(map[int]int)
-	for i, line := range entries {
-		values := common.ConvertToInts(line)
-		left[i] = values[0]
-		rightMap[values[1]]++
+	program := common.ConvertToInts(entries[4])
+	a := 0
+	// Think in octal! We need to find the digits in reverse order
+	for i := len(program) - 1; i >= 0; i-- {
+		// Shift left
+		for a *= 8; ; a++ {
+			output := runProgram(a, program)
+			if slices.Equal(output, program[i:]) {
+				fmt.Printf("A=%d, output=%v", a, output)
+				// got it
+				break
+			}
+		}
 	}
-	for _, l := range left {
-		total += l * rightMap[l]
-	}
-	return total
+	return a
 }
