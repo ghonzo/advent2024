@@ -10,9 +10,9 @@ import (
 	"github.com/ghonzo/advent2024/common"
 )
 
-// Day 17:
+// Day 17: Chronospatial Computer
 // Part 1 answer: 1,0,2,0,5,7,2,1,3
-// Part 2 answer:
+// Part 2 answer: 265652340990875
 func main() {
 	fmt.Println("Advent of Code 2024, Day 17")
 	entries := common.ReadStringsFromFile("input.txt")
@@ -20,27 +20,23 @@ func main() {
 	fmt.Printf("Part 2: %d\n", part2(entries))
 }
 
-type registerStore [3]int
+type registerStore [3]uint64
 
-func (r registerStore) combo(operand int) int {
+func (r registerStore) combo(operand int) uint64 {
 	if operand < 4 {
-		return operand
+		return uint64(operand)
 	}
 	return r[operand-4]
-}
-
-func (r registerStore) String() string {
-	return fmt.Sprintf("A=%o, B=%o, C=%o", r[0], r[1], r[2])
 }
 
 func part1(entries []string) string {
 	// Every example has b and c as 0, so we just care about a
 	a := common.ConvertToInts(entries[0])[0]
 	program := common.ConvertToInts(entries[4])
-	return intsToString(runProgram(a, program))
+	return intsToString(runProgram(uint64(a), program))
 }
 
-func runProgram(a int, program []int) []int {
+func runProgram(a uint64, program []int) []int {
 	registers := registerStore{a, 0, 0}
 	var ip int
 	var output []int
@@ -52,7 +48,7 @@ func runProgram(a int, program []int) []int {
 		case 0:
 			registers[0] = registers[0] / (1 << registers.combo(operand))
 		case 1:
-			registers[1] = registers[1] ^ operand
+			registers[1] = registers[1] ^ uint64(operand)
 		case 2:
 			registers[1] = registers.combo(operand) % 8
 		case 3:
@@ -62,7 +58,7 @@ func runProgram(a int, program []int) []int {
 		case 4:
 			registers[1] = registers[1] ^ registers[2]
 		case 5:
-			output = append(output, registers.combo(operand)%8)
+			output = append(output, int(registers.combo(operand)%8))
 		case 6:
 			registers[1] = registers[0] / (1 << registers.combo(operand))
 		case 7:
@@ -80,20 +76,24 @@ func intsToString(ints []int) string {
 	return strings.Join(s, ",")
 }
 
-func part2(entries []string) int {
+// Got this by looking at the output ... so it might be specific to my input
+func part2(entries []string) uint64 {
 	program := common.ConvertToInts(entries[4])
-	a := 0
+	candidateSolutions := []uint64{0}
 	// Think in octal! We need to find the digits in reverse order
 	for i := len(program) - 1; i >= 0; i-- {
-		// Shift left
-		for a *= 8; ; a++ {
-			output := runProgram(a, program)
-			if slices.Equal(output, program[i:]) {
-				fmt.Printf("A=%d, output=%v", a, output)
-				// got it
-				break
+		shift := uint64(1) << (i * 3)
+		var newCandidateSolutions []uint64
+		for _, a := range candidateSolutions {
+			for digit := 0; digit < 8; digit++ {
+				output := runProgram(a, program)
+				if len(output) == len(program) && slices.Equal(output[i:], program[i:]) {
+					newCandidateSolutions = append(newCandidateSolutions, a)
+				}
+				a += shift
 			}
 		}
+		candidateSolutions = newCandidateSolutions
 	}
-	return a
+	return slices.Min(candidateSolutions)
 }
