@@ -9,9 +9,9 @@ import (
 	"github.com/oleiade/lane/v2"
 )
 
-// Day 1: Linen Layout
+// Day 19: Linen Layout
 // Part 1 answer: 278
-// Part 2 answer: 75758894579712 is too low
+// Part 2 answer: 569808947758890
 func main() {
 	fmt.Println("Advent of Code 2024, Day 19")
 	entries := common.ReadStringsFromFile("input.txt")
@@ -22,8 +22,7 @@ func main() {
 func part1(entries []string) int {
 	towels := strings.Split(entries[0], ", ")
 	var total int
-	for i, line := range entries[2:] {
-		fmt.Println("Line ", i)
+	for _, line := range entries[2:] {
 		if isPossible(line, towels) {
 			total++
 		}
@@ -55,58 +54,35 @@ func part2(entries []string) uint64 {
 	towels := strings.Split(entries[0], ", ")
 	var total uint64
 	for _, line := range entries[2:] {
-		np := numPossible(line, towels)
-		total += np
-		fmt.Println(line, " ", np)
+		total += numPossible(line, towels)
 	}
 	return total
 }
 
-type partialDesign struct {
-	previous  *partialDesign
-	remaining string
-	extra     int
-}
-
-func (pd *partialDesign) score() int {
-	return len(pd.remaining)
-}
-
-func (pd *partialDesign) combos() uint64 {
-	combos := uint64(1)
-	for p := pd.previous; p.previous != nil; p = p.previous {
-		//combos *= (p.extra + 1)
-		combos <<= p.extra
-	}
-	return combos
-}
-
 func numPossible(design string, towels []string) uint64 {
-	// remaining -> partial design
-	designMap := make(map[string]*partialDesign)
-	var leaves []*partialDesign
-	root := &partialDesign{remaining: design}
-	pq := lane.NewMinPriorityQueue[*partialDesign, int]()
-	pq.Push(root, root.score())
+	numPaths := make(map[string]uint64)
+	seen := make(map[string]bool)
+	var total uint64
+	// string left to match with the score the length of the string
+	pq := lane.NewMaxPriorityQueue[string, int]()
+	pq.Push(design, len(design))
+	numPaths[design]++
 	for !pq.Empty() {
-		pd, _, _ := pq.Pop()
+		s, _, _ := pq.Pop()
+		curNumPaths := numPaths[s]
 		for _, t := range towels {
-			if remaining, ok := strings.CutPrefix(pd.remaining, t); ok {
+			if remaining, ok := strings.CutPrefix(s, t); ok {
 				if len(remaining) == 0 {
-					leaves = append(leaves, &partialDesign{previous: pd})
-				} else if v, ok := designMap[remaining]; ok {
-					v.extra++
+					total += curNumPaths
 				} else {
-					newPd := &partialDesign{pd, remaining, 0}
-					designMap[remaining] = newPd
-					pq.Push(newPd, newPd.score())
+					numPaths[remaining] += curNumPaths
+					if !seen[remaining] {
+						seen[remaining] = true
+						pq.Push(remaining, len(remaining))
+					}
 				}
 			}
 		}
-	}
-	var total uint64
-	for _, pd := range leaves {
-		total += pd.combos()
 	}
 	return total
 }

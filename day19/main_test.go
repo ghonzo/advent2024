@@ -1,4 +1,4 @@
-// Advent of Code 2024, Day 1
+// Advent of Code 2024, Day 19
 package main
 
 import (
