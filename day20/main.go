@@ -4,13 +4,12 @@ package main
 import (
 	"fmt"
 
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/ghonzo/advent2024/common"
 )
 
 // Day 20: Race Condition
 // Part 1 answer: 1381
-// Part 2 answer:
+// Part 2 answer: 982124
 func main() {
 	fmt.Println("Advent of Code 2024, Day 20")
 	entries := common.ReadStringsFromFile("input.txt")
@@ -63,7 +62,7 @@ func readGrid(entries []string) (grid common.Grid, start, end common.Point) {
 }
 
 func findPath(grid common.Grid, start, end common.Point) []common.Point {
-	path := []common.Point{start}
+	path := []common.Point{}
 	for p := start; p != end; p = nextPoint(grid, p) {
 		path = append(path, p)
 		grid.Set(p, 'O')
@@ -92,27 +91,22 @@ func part2(entries []string, cheatLimit int, minTimeSaved int) int {
 	var validCheats int
 	// This is for deugging only . Time saved pointing to number of cheats
 	timeSavedMap := make(map[int]int)
-	cheatStartDone := mapset.NewThreadUnsafeSet[common.Point]()
 	// Now step along every point in the path and find adjacent potential cheat starts
-	for tick, p := range path[:len(path)-cheatLimit-1] {
-		for cheatStart := range p.SurroundingCardinals() {
-			if v, _ := grid.CheckedGet(cheatStart); v == '#' && !cheatStartDone.Contains(cheatStart) {
-				cheatStartDone.Add(cheatStart)
-				// Check all downstream path points and see if we can reach there in 20 ticks or less
-				for _, cheatEnd := range path[tick+cheatLimit:] {
-					dist := cheatEnd.Sub(cheatStart).ManhattanDistance()
-					if dist <= cheatLimit-1 {
-						timeSaved := stepMap[cheatEnd] - tick - dist - 1
-						if timeSaved >= minTimeSaved {
-							validCheats++
-							// For debug
-							timeSavedMap[timeSaved]++
-						}
-					}
+	for tick, cheatStart := range path[:len(path)-cheatLimit-1] {
+		// Check all downstream path points and see if we can reach there in 20 ticks or less
+		for _, cheatEnd := range path[tick+cheatLimit:] {
+			dist := cheatEnd.Sub(cheatStart).ManhattanDistance()
+			if dist <= cheatLimit {
+				timeSaved := stepMap[cheatEnd] - tick - dist
+				if timeSaved >= minTimeSaved {
+					validCheats++
+					// For debug
+					timeSavedMap[timeSaved]++
 				}
 			}
 		}
 	}
+
 	// Debug
 	for k, v := range timeSavedMap {
 		fmt.Printf("There are %d cheats that save %d picoseconds\n", v, k)
