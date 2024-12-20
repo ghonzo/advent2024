@@ -40,7 +40,7 @@ func Test_part2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := part2(tt.args.entries, 19); got != tt.want {
+			if got := part2(tt.args.entries, 20, 50); got != tt.want {
 				t.Errorf("part2() = %v, want %v", got, tt.want)
 			}
 		})
