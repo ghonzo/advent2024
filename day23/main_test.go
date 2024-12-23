@@ -36,7 +36,7 @@ func Test_part2(t *testing.T) {
 		args args
 		want string
 	}{
-		{"example", args{common.ReadStringsFromFile("testdata/example.txt")}, "abc"},
+		{"example", args{common.ReadStringsFromFile("testdata/example.txt")}, "co,de,ka,ta"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

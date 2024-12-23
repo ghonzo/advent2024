@@ -11,9 +11,9 @@ import (
 	"github.com/ghonzo/advent2024/common"
 )
 
-// Day 23:
+// Day 23: LAN Party
 // Part 1 answer: 1337
-// Part 2 answer:
+// Part 2 answer: aw,fk,gv,hi,hp,ip,jy,kc,lk,og,pj,re,sr
 func main() {
 	fmt.Println("Advent of Code 2024, Day 23")
 	entries := common.ReadStringsFromFile("input.txt")
@@ -24,10 +24,11 @@ func main() {
 func part1(entries []string) int {
 	connectedMap := make(map[string][]string)
 	for _, line := range entries {
-		connectedMap[line[0:2]] = append(connectedMap[line[0:2]], line[3:])
-		connectedMap[line[3:]] = append(connectedMap[line[3:]], line[0:2])
+		a, b := line[0:2], line[3:]
+		connectedMap[a] = append(connectedMap[a], b)
+		connectedMap[b] = append(connectedMap[b], a)
 	}
-	allNetworks := mapset.NewThreadUnsafeSet[string]()
+	allNetworks := empty()
 	for k, v := range connectedMap {
 		if k[0] == 't' {
 			for i, a := range v[:len(v)-1] {
@@ -44,57 +45,52 @@ func part1(entries []string) int {
 	return allNetworks.Cardinality()
 }
 
-type cliqueHelper struct {
-	largestClique mapset.Set[string]
-	connectedSets map[string]mapset.Set[string]
+func empty() mapset.Set[string] {
+	return mapset.NewThreadUnsafeSet[string]()
 }
 
-func (ch *cliqueHelper) chooseMostConnected(choices mapset.Set[string]) string {
-	var maxConnected string
-	var maxConnectedSize int
-	choices.Each(func(c string) bool {
-		connected := ch.connectedSets[c]
-		if connected.Cardinality() > maxConnectedSize {
-			maxConnectedSize = connected.Cardinality()
-			maxConnected = c
-		}
-		return true
-	})
-	return maxConnected
+type cliqueHelper struct {
+	largestClique mapset.Set[string]
+	connectedMap  map[string]mapset.Set[string]
 }
 
 func part2(entries []string) string {
-	connectedMap := make(map[string][]string)
+	// computer pointing to all connected computers
+	connectedMap := make(map[string]mapset.Set[string])
 	for _, line := range entries {
-		connectedMap[line[0:2]] = append(connectedMap[line[0:2]], line[3:])
-		connectedMap[line[3:]] = append(connectedMap[line[3:]], line[0:2])
+		a, b := line[0:2], line[3:]
+		if c, ok := connectedMap[a]; ok {
+			c.Add(b)
+		} else {
+			connectedMap[a] = mapset.NewThreadUnsafeSet(b)
+		}
+		if c, ok := connectedMap[b]; ok {
+			c.Add(a)
+		} else {
+			connectedMap[b] = mapset.NewThreadUnsafeSet(a)
+		}
 	}
-	connectedSets := make(map[string]mapset.Set[string])
-	empty := mapset.NewThreadUnsafeSet[string]()
-	for k, v := range connectedMap {
-		connectedSets[k] = mapset.NewThreadUnsafeSet(v...)
-	}
-	ch := &cliqueHelper{mapset.NewThreadUnsafeSet[string](), connectedSets}
-	findCliques(empty, mapset.NewThreadUnsafeSetFromMapKeys(connectedSets), empty, ch)
-	allComputers := ch.largestClique.ToSlice()
-	slices.Sort(allComputers)
-	return strings.Join(allComputers, ",")
+	ch := &cliqueHelper{empty(), connectedMap}
+	findCliques(empty(), mapset.NewThreadUnsafeSetFromMapKeys(connectedMap), empty(), ch)
+	largestClique := ch.largestClique.ToSlice()
+	slices.Sort(largestClique)
+	return strings.Join(largestClique, ",")
 }
 
+// Recursive Bron-Kerbosch algorithm
 func findCliques(r, p, x mapset.Set[string], ch *cliqueHelper) {
 	if p.IsEmpty() && x.IsEmpty() {
-		fmt.Println("Clique found:", r)
 		if r.Cardinality() > ch.largestClique.Cardinality() {
 			ch.largestClique = r
 		}
 	} else {
-		u := ch.chooseMostConnected(p.Union(x))
-		neighborsU := ch.connectedSets[u]
-		for v := range p.Difference(neighborsU).Iter() {
+		for _, v := range p.ToSlice() {
 			newR := r.Clone()
 			newR.Add(v)
-			neighborsV := ch.connectedSets[v]
-			findCliques(newR, p.Intersect(neighborsV), x.Intersect(neighborsV), ch)
+			neighborsV := ch.connectedMap[v]
+			newP := p.Intersect(neighborsV)
+			newX := x.Intersect(neighborsV)
+			findCliques(newR, newP, newX, ch)
 			p.Remove(v)
 			x.Add(v)
 		}
