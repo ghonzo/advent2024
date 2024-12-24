@@ -8,14 +8,13 @@ import (
 	"github.com/ghonzo/advent2024/common"
 )
 
-// Day 24:
+// Day 24: Crossed Wires
 // Part 1 answer: 60614602965288
-// Part 2 answer:
+// Part 2 answer: cgr,hpc,hwk,qmd,tnt,z06,z31,z37
 func main() {
 	fmt.Println("Advent of Code 2024, Day 24")
 	entries := common.ReadStringsFromFile("input.txt")
 	fmt.Printf("Part 1: %d\n", part1(entries))
-	//fmt.Printf("Part 2: %d\n", part2(entries))
 }
 
 type rule struct {
@@ -73,21 +72,6 @@ outer:
 		if v && k[0] == 'z' {
 			total += (1 << common.Atoi(k[1:3]))
 		}
-	}
-	return total
-}
-
-func part2(entries []string) int {
-	var total int
-	left := make([]int, len(entries))
-	rightMap := make(map[int]int)
-	for i, line := range entries {
-		values := common.ConvertToInts(line)
-		left[i] = values[0]
-		rightMap[values[1]]++
-	}
-	for _, l := range left {
-		total += l * rightMap[l]
 	}
 	return total
 }
