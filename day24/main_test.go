@@ -16,7 +16,8 @@ func Test_part1(t *testing.T) {
 		args args
 		want uint64
 	}{
-		{"example", args{common.ReadStringsFromFile("testdata/example.txt")}, 11},
+		{"example", args{common.ReadStringsFromFile("testdata/example.txt")}, 4},
+		{"example2", args{common.ReadStringsFromFile("testdata/example2.txt")}, 2024},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
